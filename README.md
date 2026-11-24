@@ -23,11 +23,6 @@ The layered `LayeredRental` is both an anemic data model and a JPA entity: its p
 
 The direct coupling is a deliberate teaching example, not a requirement of layered architecture. A layered design can also use dependency inversion and isolate its domain.
 
-## Vertical-slice comparison
-
-The separate `slicedrental` module organizes the same capabilities by business use case rather than technical layer. It follows `domain`, `startrental`, `swapvehicle`, `port/out`, and `adapter/in|out` packages. Each use case has its own command, use-case contract, and service; both use the shared `RentalRepository` and `VehicleProvider` ports. It has its own domain, persistence, and simulated City Bike/Canal Boat adapters, with no dependency on the standard rental module. Green Scooter remains unsupported.
-
-The sliced endpoints are `POST /api/sliced/rentals` and `PUT /api/sliced/rentals/{rentalId}/vehicle`. The module uses an in-memory repository by default and its own JPA repository when the `jpa` profile is active.
 
 ## Core domain
 
