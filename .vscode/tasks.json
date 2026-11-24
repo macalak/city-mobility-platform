@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Render conference slides",
+      "type": "process",
+      "command": "asciidoctor-revealjs",
+      "args": [
+        "-r",
+        "asciidoctor-diagram",
+        "-o",
+        "${workspaceFolder}/docs/ports-and-adapters-conference.html",
+        "${workspaceFolder}/docs/ports-and-adapters-conference.adoc"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

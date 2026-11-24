@@ -1,0 +1,24 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Rider
+rectangle "Web adapter\nreads the HTTP request" as Web
+rectangle "Rental use case\ncoordinates the work" as App
+rectangle "Rental domain\nprotects business rules" as Domain
+interface "RentalProviderPort\n(app-owned promise)" as Port
+rectangle "City Bike adapter\ntranslates provider details" as BikeAdapter
+rectangle "Canal Boat adapter\ntranslates provider details" as BoatAdapter
+cloud "City Bike API" as BikeApi
+cloud "Canal Boat API" as BoatApi
+
+Rider --> Web
+Web --> App
+App --> Domain
+App --> Port
+BikeAdapter ..|> Port
+BoatAdapter ..|> Port
+BikeAdapter --> BikeApi
+BoatAdapter --> BoatApi
+@enduml

@@ -1,0 +1,22 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Person
+rectangle "Outside systems" as Outside
+rectangle "Inbound adapter\ntranslates an incoming request" as InAdapter
+package "Application core" {
+  interface "Inbound port\nwhat the app can do" as InPort
+  rectangle "Use cases + rules\nthe app's decisions" as Core
+  interface "Outbound port\nwhat the app needs" as OutPort
+}
+rectangle "Outbound adapter\ntranslates an outgoing request" as OutAdapter
+
+Person --> InAdapter
+InAdapter --> InPort : calls
+Core ..|> InPort : provides
+Core --> OutPort : uses
+OutAdapter ..|> OutPort : fulfills
+OutAdapter --> Outside
+@enduml

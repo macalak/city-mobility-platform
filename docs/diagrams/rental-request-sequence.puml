@@ -1,0 +1,22 @@
+@startuml
+autonumber
+actor Rider
+participant "Web adapter" as Web
+participant "Rental use case" as App
+participant "Provider port" as Port
+participant "City Bike adapter" as Adapter
+participant "City Bike API" as Api
+participant "Rental domain" as Domain
+
+Rider -> Web: request a bike rental
+Web -> App: start rental
+App -> Domain: check rental rules
+App -> Port: start with provider
+Port -> Adapter: route to City Bike
+Adapter -> Api: send City Bike request
+Api --> Adapter: provider response
+Adapter --> App: common confirmation
+App -> Domain: create Rental
+App --> Web: rental ID
+Web --> Rider: rental created
+@enduml

@@ -1,0 +1,52 @@
+The main advantage is explicit dependency direction: the application defines what it needs through ports, and technology-specific adapters implement them. That makes it easier to replace an integration without changing the use case.
+
+In this demo, adding Green Scooter to the hexagonal variant means adding an adapter for RentalProviderPort. In the layered example, the service directly knows each provider, so its provider-selection code must change.
+
+A layered design can use the same techniques. Hexagonal architecture’s advantage is that it makes those boundaries a central organizing principle, not that it enables something layers cannot.
+
+Differences on service layer:
+
+ * Layered: LayeredRentalService is a Spring @Service and directly knows the City Bike and Canal Boat clients, their request types, and HTTP statuses.
+ * Hexagonal: RentalApplicationService is plain Java. It orchestrates the use case through application-owned ports and does not depend on Spring or specific provider implementations. Spring wires it up outside the service.
+
+The hexagonal service still knows the concept of a rental provider; it just doesn’t know a particular provider’s API.
+
+
+Hexagonal architecture applies clean-code ideas at the architecture level:
+
+* Single responsibility: the use case orchestrates rentals; adapters handle provider-specific communication.
+* Dependency inversion: the application defines the port it needs, and provider adapters implement it.
+* Separation of concerns: business rules, HTTP handling, and provider protocols have distinct homes.
+* Testability: the use case can be tested with substitutes for its ports, without starting Spring or calling providers.
+
+== Changes in layered and hexagonal designs
+
+[cols="1,2,2",options="header"]
+|===
+| Change | Layered example | Hexagonal example
+
+| Add a provider
+| Add its client and update `LayeredRentalService` to select it and translate its API.
+| Add an adapter implementing `RentalProviderPort` and register it. The use case and domain can remain unchanged if the existing port covers the provider's behavior.
+
+| Add a use case
+| Add an operation to a service, or create a new service, and expose it through a controller. The service may also coordinate repositories and provider clients.
+| Define an inbound use case and implement its orchestration in the application layer. Add or extend adapters and outbound ports only where needed.
+
+| Change domain rules
+| In this example, change the service because `LayeredRental` is a data record. A database-backed version might also need persistence changes.
+| Change the domain model for its invariants, such as when a rental can be completed. Change application orchestration or persistence adapters when the new rule requires it.
+|===
+
+*Takeaway:* Hexagonal architecture makes the impact of a change easier to locate. Provider protocol changes usually belong at the edge; business-rule changes belong in the core. Neither approach guarantees this automatically, and a layered design can use the same separation.
+
+
+In this project:
+
+* The hexagonal application service and domain do not depend on Spring or provider APIs. The application owns the ports; adapters supply the technology-specific implementations.
+* Use-case tests can instantiate the service with substitutes for those ports, without starting Spring or calling providers.
+* Architecture tests enforce dependency rules, helping prevent technology details from leaking back into the core.
+
+A layered design can achieve the same isolation and testability, but hexagonal architecture makes it a central design goal. It also makes an anemic model easier to avoid, though a rich domain model still requires deliberate design.
+
+

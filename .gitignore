@@ -1,0 +1,16 @@
+.gradle/
+build/
+docs/ports-and-adapters-conference.html
+.idea/
+*.iml
+*.class
+*.log
+.DS_Store
+Thumbs.db
+hs_err_pid*
+*.tmp
+.fake
+*.crt
+*.key
+*.pptx
+*.potx

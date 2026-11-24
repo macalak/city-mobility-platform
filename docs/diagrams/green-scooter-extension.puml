@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "Keep as-is" {
+  rectangle "Rental use case" as UseCase
+  interface "RentalProviderPort" as Port
+  rectangle "Rental domain" as Domain
+}
+package "Add for Green Scooter" {
+  rectangle "Green Scooter adapter" as Adapter
+  rectangle "Green Scooter client" as Client
+}
+
+UseCase --> Port
+Adapter ..|> Port
+Adapter --> Client
+UseCase --> Domain
+@enduml

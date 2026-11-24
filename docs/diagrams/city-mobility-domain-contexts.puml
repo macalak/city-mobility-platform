@@ -1,0 +1,25 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Rider
+package "City Mobility Platform" {
+  rectangle "Identity\naccounts and access" as Identity
+  rectangle "Mobility Discovery\nfind services and availability" as Discovery
+  rectangle "Rental\nstart and complete rentals" as Rental #LightBlue
+  rectangle "Payment\nauthorize and settle charges" as Payment
+  rectangle "Beneficiary and Benefits\nwho qualifies for city support" as Benefits
+  rectangle "Fleet Operations\nvehicle status and maintenance" as Fleet
+}
+cloud "Bike, boat, and scooter operators" as Operators
+
+Rider --> Identity
+Rider --> Discovery : searches
+Discovery --> Rental : selected service
+Rental --> Payment : charge or refund
+Benefits --> Payment : eligible support
+Fleet --> Discovery : availability
+Rental --> Fleet : pickup and return
+Rental --> Operators : provider adapter
+@enduml

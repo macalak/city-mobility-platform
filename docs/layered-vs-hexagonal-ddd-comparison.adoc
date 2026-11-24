@@ -1,0 +1,409 @@
+= Layered Architecture vs. Hexagonal Architecture
+:toc:
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
+
+Hexagonal Architecture is generally a more natural structural fit for Domain-Driven Design (DDD), especially when implementing a rich domain model. The key reason is dependency direction: the domain model is placed at the center of the architecture, while infrastructure depends on abstractions defined around the domain and application boundary.
+
+== Layered vs. Hexagonal Architecture
+
+[cols="1,2,2", options="header"]
+|===
+|Aspect
+|Layered Architecture
+|Hexagonal Architecture
+
+|Primary organizing principle
+|Technical layers
+|Domain core and explicit boundaries
+
+|Typical flow
+|Controller -> Service -> Domain -> Repository
+|Adapter -> Port -> Application/Domain -> Port -> Adapter
+
+|Domain position
+|One layer in a stack
+|Center of the architecture
+
+|Dependency direction
+|Usually top to bottom
+|Outside to inside
+
+|Repository
+|Infrastructure or data-access layer
+|Adapter implementing a domain or application port
+
+|External API and Kafka
+|Integration layer
+|Outbound adapters
+
+|REST controller
+|Presentation layer
+|Inbound adapter
+
+|Business logic
+|Can easily leak into services
+|Explicitly protected inside the domain
+
+|Infrastructure replacement
+|Possible, but often coupled
+|An explicit architectural goal
+
+|DDD bounded context
+|Can implement one
+|Maps naturally to one
+
+|Testing domain and use cases
+|Often requires mocking lower layers
+|Core can be tested without infrastructure
+|===
+
+== Dependency Direction Is the Fundamental Difference
+
+A conventional layered architecture tends to look like this:
+
+[source,text]
+----
+Controller
+    |
+    v
+Application Service
+    |
+    v
+Domain Model
+    |
+    v
+Repository
+    |
+    v
+Database
+----
+
+The conceptual problem is that this representation suggests that the _Domain Model_ depends downward on persistence.
+
+For DDD, this is undesirable. The domain should ideally know nothing about PostgreSQL, MongoDB, JPA, Kafka, REST, or other infrastructure concerns.
+
+Hexagonal Architecture reverses the relationship:
+
+[source,text]
+----
+             Inbound Adapter
+              REST / Kafka
+                   |
+                   v
+             Inbound Port
+                   |
+             +-----v-----+
+             |Application|
+             |   Core    |
+             |           |
+             |  Domain   |
+             |   Model   |
+             +-----+-----+
+                   |
+             Outbound Port
+            Repository Port
+                   ^
+                   | implements
+             Outbound Adapter
+                JPA / DB
+----
+
+Conceptually:
+
+[source,text]
+----
+Domain/Application -> Repository interface
+                           ^
+                           | implements
+                    JPA Repository Adapter
+----
+
+This inversion is the important distinction.
+
+== DDD Models the Business, Not Infrastructure
+
+Suppose a ticketing domain contains the following aggregate behavior:
+
+[source,java]
+----
+public class Journey {
+
+    private JourneyStatus status;
+    private Money fare;
+
+    public void complete(FareCalculator calculator) {
+        if (status != JourneyStatus.STARTED) {
+            throw new InvalidJourneyStateException();
+        }
+
+        fare = calculator.calculate(this);
+        status = JourneyStatus.COMPLETED;
+    }
+}
+----
+
+The domain model does not need to know whether the journey:
+
+* came from REST,
+* was reconstructed from Kafka events,
+* is persisted through JPA,
+* is stored in PostgreSQL,
+* is exposed through GraphQL, or
+* triggers an external payment API.
+
+This isolation is exactly what a DDD domain model benefits from.
+
+== Ports Express What the Application or Domain Needs
+
+Consider a repository port:
+
+[source,java]
+----
+public interface JourneyRepository {
+
+    Optional<Journey> findById(JourneyId id);
+
+    void save(Journey journey);
+}
+----
+
+The core defines *what capability is required*. An infrastructure adapter determines *how that capability is provided*:
+
+[source,java]
+----
+@Component
+class JpaJourneyRepositoryAdapter implements JourneyRepository {
+
+    private final SpringDataJourneyRepository repository;
+
+    @Override
+    public Optional<Journey> findById(JourneyId id) {
+        // Map persistence entity to domain aggregate.
+    }
+
+    @Override
+    public void save(Journey journey) {
+        // Map domain aggregate to persistence entity.
+    }
+}
+----
+
+The dependency relationship is therefore:
+
+[source,text]
+----
+Domain
+   |
+   v
+JourneyRepository
+   ^
+   | implements
+JpaJourneyRepositoryAdapter
+   |
+   v
+PostgreSQL
+----
+
+PostgreSQL and JPA become implementation details. This is a strong fit with DDD because the domain vocabulary determines the abstraction, rather than the persistence technology determining the domain structure.
+
+== Hexagonal Architecture Emphasizes the Aggregate Boundary
+
+In conventional layered systems, the following interaction is common:
+
+[source,text]
+----
+Controller
+   |
+   v
+Service
+   |
+   v
+Repository
+   |
+   v
+Database
+----
+
+Over time, the service can start accumulating all responsibilities:
+
+[source,java]
+----
+@Service
+class JourneyService {
+
+    void finishJourney(...) {
+        // Validation
+        // Business rules
+        // Fare calculation
+        // State transitions
+        // Repository operations
+        // Kafka publishing
+        // External API calls
+    }
+}
+----
+
+The domain model can then deteriorate into entities containing mostly fields, getters, and setters. This is the classic risk of an anemic domain model.
+
+With DDD and Hexagonal Architecture, the preferred responsibility distribution is:
+
+[source,text]
+----
+Application Service
+       |
+       v
+   Aggregate
+   +---------------+
+   | Journey       |
+   |               |
+   | start()       |
+   | addTap()      |
+   | complete()    |
+   | calculate...  |
+   +---------------+
+       |
+       +-- Value Objects
+       +-- Domain Services
+       +-- Domain Events
+----
+
+The application service orchestrates the use case, while the aggregate protects business invariants.
+
+== Natural Mapping to a DDD Bounded Context
+
+For example, a Fare Management bounded context in an account-based ticketing environment could be structured as follows:
+
+[source,text]
+----
+             Fare Management Bounded Context
+
+ +-----------------------------------------------+
+ |                                               |
+ |                Adapters                       |
+ |                                               |
+ | REST      Kafka                    PostgreSQL |
+ | Adapter   Consumer                 Adapter    |
+ |    |         |                         ^      |
+ |    v         v                         |      |
+ | +-------------------------------------------+ |
+ | |                  Ports                    | |
+ | |                                           | |
+ | | CompleteJourney     JourneyRepository     | |
+ | | CalculateFare       EventPublisher        | |
+ | +----------+------------------^-------------+ |
+ |            |                  |               |
+ |            v                  |               |
+ |       Application Layer                       |
+ |            |                                  |
+ |            v                                  |
+ |       DOMAIN MODEL                            |
+ |                                               |
+ |       Journey Aggregate                       |
+ |       Fare                                    |
+ |       Tap                                     |
+ |       Money                                   |
+ |       FarePolicy                              |
+ |       Domain Events                           |
+ |                                               |
+ +-----------------------------------------------+
+----
+
+This is a natural physical manifestation of a DDD bounded context.
+
+== Important Nuance
+
+DDD does not require Hexagonal Architecture.
+
+DDD can be implemented with a Layered Architecture. A carefully designed layered application can preserve the same dependency rule:
+
+[source,text]
+----
+Presentation
+      |
+      v
+Application
+      |
+      v
+Domain
+      ^
+Infrastructure
+----
+
+At that point, however, the architecture begins to resemble Hexagonal, Clean, or Onion Architecture in terms of dependency direction.
+
+A balanced comparison is therefore:
+
+[quote]
+____
+Layered Architecture organizes the system primarily around technical responsibilities, while Hexagonal Architecture organizes dependencies around the application and domain core. This makes Hexagonal Architecture particularly suitable for DDD because the domain model remains independent of infrastructure and delivery mechanisms.
+____
+
+It would be too strong to claim that Layered Architecture is incompatible with DDD.
+
+== Simplified Comparison
+
+=== Layered Architecture
+
+[source,text]
+----
+       UI
+        |
+        v
+ +-------------+
+ | Controller  |
+ +-------------+
+ | Service     |------> Integration
+ +-------------+
+ | Domain      |
+ +-------------+
+ | Repository  |
+ +-------------+
+        |
+        v
+     Database
+----
+
+*Mental model:* _Which technical layer does this class belong to?_
+
+=== Hexagonal Architecture
+
+[source,text]
+----
+             REST
+              |
+              v
+        Inbound Adapter
+              |
+         Inbound Port
+              |
+              v
+      +---------------+
+      | APPLICATION   |
+      |               |
+      | DOMAIN MODEL  |
+      |               |
+      +---------------+
+           |     |
+           v     v
+       Repository  Event
+          Port     Port
+           ^        ^
+           |        |
+          JPA     Kafka
+        Adapter   Adapter
+----
+
+*Mental model:* _What does the domain need, and what interacts with the domain from the outside?_
+
+The second question is much closer to the way DDD approaches bounded contexts, aggregates, domain services, value objects, domain events, and explicit boundaries.
+
+== Conclusion
+
+[quote]
+____
+Hexagonal Architecture complements DDD by placing the domain at the architectural center and protecting it from infrastructure concerns. Ports express capabilities required or offered by the application, while adapters integrate technologies such as REST, databases, and messaging without introducing those concerns into the domain model.
+____
+
+For a visual comparison, dependency direction should be the main differentiator. This is more architecturally meaningful than simply presenting a hexagon versus stacked rectangles.

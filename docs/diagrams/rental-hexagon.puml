@@ -1,0 +1,31 @@
+@startuml rental-hexagon
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+skinparam componentStyle rectangle
+skinparam hexagon {
+  BackgroundColor #EAF3EE
+  BorderColor #27644B
+}
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #52605A
+}
+actor Rider
+rectangle "RentalController\nREST adapter" as Controller
+hexagon "Rental application core" as Core {
+  rectangle "Inbound:\nStartRentalUseCase\n\nRentalApplicationService\nuse-case orchestration\n\nRental domain\nlifecycle and invariants\n\nOutbound ports:\nRentalProviderPort\nRentalRepository\nTimeProvider" as CoreContents #transparent;line:transparent
+}
+
+rectangle "City Bike adapter\n+ simulated client" as BikeAdapter
+rectangle "Canal Boat adapter\n+ simulated client" as BoatAdapter
+rectangle "In-memory repository" as RepositoryAdapter
+rectangle "System clock" as ClockAdapter
+
+Rider --> Controller : HTTP
+Controller --> Core : calls inbound port
+Core <.. BikeAdapter : implements provider port
+Core <.. BoatAdapter : implements provider port
+Core <.. RepositoryAdapter : implements repository port
+Core <.. ClockAdapter : implements time port
+@enduml

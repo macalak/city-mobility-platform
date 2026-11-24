@@ -1,0 +1,401 @@
+{
+  "info": {
+    "_postman_id": "b56fdc5a-cf01-4be7-9b58-b69fb325c5a1",
+    "name": "City Mobility Rental API",
+    "description": "API-level acceptance checks for the rental use case. Start the app first with ./gradlew bootRun (Windows: .\\gradlew.bat bootRun), then run this collection in order against the default Spring Boot URL http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "cityBikeRenterId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "canalBoatRenterId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "activeRentalRenterId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Supported providers",
+      "item": [
+        {
+          "name": "Start City Bike rental",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"cityBikeRenterId\", \"postman-city-bike-\" + pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns 201 Created\", function () { pm.response.to.have.status(201); });",
+                  "const response = pm.response.json();",
+                  "pm.test(\"returns an active rental ID\", function () { pm.expect(response.rentalId).to.be.a(\"string\"); pm.expect(response.rentalId.length).to.be.greaterThan(0); pm.expect(response.status).to.eql(\"ACTIVE\"); });",
+                  "pm.test(\"Location points to the created rental\", function () { pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/rentals/\" + response.rentalId); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"{{cityBikeRenterId}}\",\n  \"providerId\": \"city-bike\",\n  \"vehicleId\": \"bike-42\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Canal Boat rental",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"canalBoatRenterId\", \"postman-canal-boat-\" + pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns 201 Created\", function () { pm.response.to.have.status(201); });",
+                  "const response = pm.response.json();",
+                  "pm.test(\"returns an active rental ID\", function () { pm.expect(response.rentalId).to.be.a(\"string\"); pm.expect(response.rentalId.length).to.be.greaterThan(0); pm.expect(response.status).to.eql(\"ACTIVE\"); });",
+                  "pm.test(\"Location points to the created rental\", function () { pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/rentals/\" + response.rentalId); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"{{canalBoatRenterId}}\",\n  \"providerId\": \"canal-boat\",\n  \"vehicleId\": \"boat-7\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Request validation",
+      "item": [
+        {
+          "name": "Reject unknown provider",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns 404 Not Found\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"returns UNKNOWN_RENTAL_PROVIDER\", function () { pm.expect(pm.response.json().code).to.eql(\"UNKNOWN_RENTAL_PROVIDER\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"postman-unknown-provider\",\n  \"providerId\": \"green-scooter\",\n  \"vehicleId\": \"scooter-17\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject missing renter ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns 400 Bad Request\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"returns INVALID_REQUEST\", function () { pm.expect(pm.response.json().code).to.eql(\"INVALID_REQUEST\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"\",\n  \"providerId\": \"city-bike\",\n  \"vehicleId\": \"bike-42\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rental business rules",
+      "description": "Run these requests in order. They verify that a renter cannot have two active rentals.",
+      "item": [
+        {
+          "name": "Create first rental for renter",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"activeRentalRenterId\", \"postman-active-renter-\" + pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"first rental returns 201 Created\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"first rental is active\", function () { pm.expect(pm.response.json().status).to.eql(\"ACTIVE\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"{{activeRentalRenterId}}\",\n  \"providerId\": \"city-bike\",\n  \"vehicleId\": \"bike-active-1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject second active rental for same renter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"second rental returns 409 Conflict\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"returns ACTIVE_RENTAL_EXISTS\", function () { pm.expect(pm.response.json().code).to.eql(\"ACTIVE_RENTAL_EXISTS\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"{{activeRentalRenterId}}\",\n  \"providerId\": \"canal-boat\",\n  \"vehicleId\": \"boat-8\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provider error handling",
+      "item": [
+        {
+          "name": "Translate City Bike failure to 502",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns 502 Bad Gateway\", function () { pm.response.to.have.status(502); });",
+                  "pm.test(\"returns PROVIDER_UNAVAILABLE\", function () { pm.expect(pm.response.json().code).to.eql(\"PROVIDER_UNAVAILABLE\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renterId\": \"fail-city-bike\",\n  \"providerId\": \"city-bike\",\n  \"vehicleId\": \"bike-42\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/rentals",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "rentals"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,410 @@
+= One Rental, Many Providers
+:subtitle: A beginner's guide to ports, adapters, and AI-assisted change
+:author: City Mobility Platform
+:revealjs_theme: sky
+:revealjs_transition: fade
+:revealjs_progress: true
+:revealjs_slideNumber: true
+:source-highlighter: highlight.js
+
+// VS Code: run the "Render conference slides" task, then open the generated HTML.
+// One-time setup: gem install asciidoctor-revealjs asciidoctor-diagram
+
+== One city. More ways to move.
+
+|===
+|ONE RENTAL JOURNEY |MANY OPERATORS
+
+|one renter
+one request
+one city platform
+|bikes
+boats
+scooters
+tomorrow's next provider
+|===
+
+[.notes]
+--
+Open with the product problem, not the pattern. A resident sees one city service; the platform integrates with multiple operators.
+--
+
+== A new provider is a product request
+
+[%step]
+. The city adds Green Scooter to its mobility program.
+. Riders expect the same rental experience.
+. The provider exposes a different API, vocabulary, and failure behavior.
+. The platform must add that integration without spreading it through the business core.
+
+[.notes]
+--
+Ask the audience what they would change first. The tension is not whether we can call another API; it is where that provider-specific knowledge should live.
+--
+
+== City mobility has more than one business area
+
+plantuml::diagrams/city-mobility-domain-contexts.puml[format=svg]
+
+* A *bounded context* is an area with its own terms, data, and business rules.
+* The contexts communicate; they should not need one shared model for everything.
+* Rental is implemented in this demo. The others are illustrative neighboring contexts.
+
+[.notes]
+--
+Use this as a domain map, not a claim that every box is already a code module. Beneficiary and Benefits is a proposed context for who qualifies for city-funded discounts or mobility support. Provider-specific adapters remain inside the Rental context in this example.
+--
+
+== Today, Green Scooter is rejected
+
+[source,http]
+----
+POST /api/rentals
+Content-Type: application/json
+
+{
+  "renterId": "anna",
+  "providerId": "green-scooter",
+  "vehicleId": "scooter-17"
+}
+----
+
+[source,json]
+----
+{
+  "code": "UNKNOWN_RENTAL_PROVIDER",
+  "message": "Unknown rental provider: green-scooter"
+}
+----
+
+The baseline supports City Bike and Canal Boat. Green Scooter is the extension exercise.
+
+[.notes]
+--
+This is intentional, not a broken feature. It gives us a visible before state and a clean test of whether the new provider can be added at the edge.
+--
+
+== Two ways to organize the same rental
+
+[cols="1,1",options="header"]
+|===
+| Layered example in this project | Ports and adapters
+
+| Controller -> service -> repository and provider clients
+| REST adapter -> use case -> rental domain
+
+| Service depends on Spring and provider types
+| Application defines ports; adapters implement them
+
+| Technology layers organize the code
+| Business policy and its boundaries organize the code
+|===
+
+The distinction is *dependency direction*, not the presence of controllers, services, or repositories.
+
+[.notes]
+--
+The `layeredrental` module is a deliberately coupled example, not a claim about every layered architecture. A layered system can also use dependency inversion and a rich domain model. Hexagonal architecture makes those boundaries explicit; it does not guarantee them automatically.
+--
+
+== Compare the Green Scooter change
+
+[cols="1,1",options="header"]
+|===
+| Directly coupled service | Application-owned provider port
+
+| Add a client and its request/response types
+| Add a client and its request/response types
+
+| Update the service to choose and call the new API
+| Add an adapter and register it as a bean
+
+| Test provider branches alongside the rental flow
+| Test provider translation separately from the rental flow
+|===
+
+Here, the same rental use case and domain model handle the new provider.
+
+[.notes]
+--
+The left column describes the deliberately coupled `layeredrental` module, not an unavoidable property of layers. The right column is the intended live exercise: the existing registry discovers provider port implementations. A real new rental rule would still require an intentional domain or application change. The two endpoints use separate in-memory stores and simulated clients.
+--
+
+== The tempting shortcut
+
+Let the application call each provider directly:
+
+[source,java]
+----
+if (providerId.equals("city-bike")) {
+    // City Bike API details
+} else if (providerId.equals("canal-boat")) {
+    // Canal Boat API details
+} else if (providerId.equals("green-scooter")) {
+    // Green Scooter API details
+}
+----
+
+* Every new provider adds more special cases.
+* Provider details spread into the rental rules.
+* A provider API change can break the main flow.
+
+[.notes]
+--
+This snippet is illustrative; the layered module has equivalent provider selection in `LayeredRentalService`. The hexagonal application service has no such branch. Every new provider in the layered example adds another reason for that service to know vendor details.
+--
+
+== Start with one simple question
+
+[quote]
+____
+What does the rental use case need from any provider to start a rental?
+____
+
+* Which provider should receive the request?
+* How do we ask it to start a rental?
+* What simple result does the app need back?
+
+The app needs a small promise, not a copy of a provider API.
+
+[.notes]
+--
+A port is a contract shaped by the application need. It is not a copy of the provider API and not a generic integration framework.
+--
+
+== The app has a center and plug-in edges
+
+plantuml::diagrams/rental-hexagon.puml[format=svg]
+
+* The center contains the rental rules.
+* The edge translates to and from other systems.
+* The port is the small promise between them.
+
+[.notes]
+--
+Walk the diagram from left to right for the request, then point out that compile-time dependency direction is inward: the application declares its outbound ports; the adapters implement them. Provider clients are simulated, and Spring wiring is outside the core and omitted for clarity. The clock is wired as a TimeProvider implementation.
+--
+
+== The idea, without city or vendor names
+
+plantuml::diagrams/ports-and-adapters-concept.puml[format=svg]
+
+* A *port* is a named promise at the core's boundary.
+* An *adapter* translates between that promise and the outside world.
+* The core owns the rules; outside technology can be replaced.
+
+[.notes]
+--
+Use a simple plug analogy if helpful: the port describes the connection the core expects, and an adapter translates the details of a particular outside system. Stress that the important point is ownership: the core defines the promise and does not import the outside system's types.
+--
+
+== Keep business rules inside
+
+[cols="1,1",options="header"]
+|===
+| Inside: policy | Outside: technology
+
+| Rental lifecycle and invariants
+| REST, JSON, Spring MVC
+
+| Provider-neutral use case
+| City Bike, Canal Boat, Green Scooter APIs
+
+| Application-owned ports and types
+| HTTP clients, SDKs, provider DTOs
+
+| What must be true for a valid rental
+| How a particular operator performs activation
+|===
+
+In this project, the domain is plain Java. It does not need to know Spring, HTTP, databases, or vendor code.
+
+[.notes]
+--
+Emphasize that "inside" is about ownership of policy, not folder names alone. A rule that decides whether a rental can complete belongs with the domain even if an adapter triggers it.
+--
+
+== The application owns the port
+
+[source,java]
+----
+public interface RentalProviderPort {
+    ProviderId providerId();
+
+    ProviderConfirmation startRental(
+            RenterId renterId,
+            VehicleId vehicleId);
+}
+----
+
+This interface is a *port*: a small Java promise owned by the app.
+
+`ProviderId`, `RenterId`, `VehicleId`, and `ProviderConfirmation` are shared app types.
+
+No Spring annotation. No provider request object. No vendor response type.
+
+[.notes]
+--
+This is the pivot point of the talk. The application defines the words it needs; each adapter takes responsibility for translating them.
+--
+
+== An adapter translates provider details
+
+The City Bike API uses its own request and response shapes. The adapter converts them:
+
+[source,java]
+----
+CityBikeStartRentalRequest request =
+        new CityBikeStartRentalRequest(renterId.value(), vehicleId.value());
+CityBikeStartRentalResponse response = client.startRental(request);
+
+return new ProviderConfirmation(
+        response.externalRentalId(),
+        new VehicleId(response.bikeId()),
+        VehicleType.BICYCLE);
+----
+
+* Provider vocabulary stays in the City Bike adapter.
+* The application receives a common confirmation.
+* Provider failures are translated at the integration boundary.
+
+[.notes]
+--
+This excerpt follows the existing City Bike adapter. The Canal Boat adapter follows the same port with its own client contract and mapping.
+--
+
+== Follow one rental request
+
+plantuml::diagrams/rental-request-sequence.puml[format=svg]
+
+The app follows the same steps even when another provider is selected.
+
+[.notes]
+--
+Keep the sequence brisk. The important observation is that provider selection does not turn the use case into provider-specific code.
+--
+
+== Add Green Scooter at the edge
+
+. Add Green Scooter client types for its activation protocol.
+. Implement `RentalProviderPort` in a Green Scooter adapter.
+. Map its response to `ProviderConfirmation` and `VehicleType.SCOOTER`.
+. Register the adapter as a Spring bean.
+. Test success, provider failure, and registration; run architecture tests.
+
+The registry already accepts `List<RentalProviderPort>`: adding the bean makes it discoverable.
+
+plantuml::diagrams/green-scooter-extension.puml[format=svg]
+
+The new adapter is the only piece that needs to understand the scooter provider API.
+
+[.notes]
+--
+The repository's live exercise adds client, request/response types, adapter, configuration, and adapter tests. Keep the rest of the application unchanged unless a real business rule requires otherwise.
+--
+
+== The extension should have a small footprint
+
+[cols="1,1",options="header"]
+|===
+| Add or change | Leave unchanged for this provider addition
+
+| Green Scooter client and provider DTOs
+| `Rental`
+
+| `GreenScooterRentalAdapter`
+| `RentalApplicationService`
+
+| Green Scooter Spring configuration
+| `RentalProviderRegistry`
+
+| Adapter and registration tests
+| `RentalController` and the public rental request
+|===
+
+A narrow diff is an architectural signal: provider knowledge stayed at the boundary.
+
+[.notes]
+--
+This is the central extensibility payoff. Spring gathers all port implementations, and the existing registry routes by provider ID; no provider switch needs to be edited in the use case.
+--
+
+== An open edge, a stable core
+
+* New provider protocol? Add or adapt an outbound adapter.
+* New transport? Add an inbound adapter around the same use case.
+* New persistence technology? Implement the repository port differently.
+* New business meaning? Evolve the domain deliberately.
+
+Hexagonal architecture does not freeze the domain. It makes change intentional and local.
+
+[.notes]
+--
+Avoid claiming that the domain can never change. If scooter rentals introduce a genuine business concept or invariant, the domain should represent it. The goal is to avoid changing policy merely to accommodate a vendor protocol.
+--
+
+== AI agents can help with the extension
+
+A well-scoped agent can:
+
+. Explore the existing flow and report the actual extension points.
+. Propose a small provider-specific change set before editing.
+. Generate the adapter, configuration, and focused tests.
+. Run targeted tests, fix failures, and summarize the diff.
+
+The person supplies the goal, rules, and final review.
+
+[.notes]
+--
+The repo's prompt pack follows this flow: kickoff, explore, plan, build, test, architecture review, and polish. The agent is most useful when it can inspect real code and work inside explicit constraints.
+--
+
+== Keep the agent on the right path
+
+* Say what should stay unchanged: rental rules and the main use case.
+* Ask for a small plan before asking for code.
+* Run the tests; do not rely on a claim that they passed.
+* Check that provider details stayed in the adapter.
+* Keep a person responsible for the design and final change.
+
+AI can accelerate the work. The boundary makes that work easier to constrain and verify.
+
+[.notes]
+--
+Do not present the architecture as an AI guarantee. It creates explicit seams that help both people and agents reason about allowed changes; tests and review still matter.
+--
+
+== Live demo: prove the claim
+
+. Send the Green Scooter request and observe the unknown-provider result.
+. Ask an agent to trace the request path and identify the port.
+. Implement the provider adapter and its mapping tests.
+. Add the provider bean; do not edit the use case or domain.
+. Re-run provider tests and architecture checks.
+. Repeat the request and inspect the unchanged core diff.
+
+The proof is not generated code. It is correct behavior with a reviewable boundary.
+
+[.notes]
+--
+Show the before/after behavior and the diff. The audience should be able to see both the new provider support and what did not need to change.
+--
+
+== Take these ideas with you
+
+* Keep important rental rules in the center of the app.
+* Let the app define the small promise it needs: the port.
+* Give each outside provider its own translator: the adapter.
+* Add a provider at the edge; change the center only when the rules change.
+* Use tests to check both behavior and boundaries.
+* Give AI agents clear limits, then review and verify their work.
+
+[.notes]
+--
+Close by returning to the product request. The city gained another provider without making every business rule learn another vendor's language.
+--
+
+== One provider added. Core behavior preserved.
+
+[.small]
+Questions?
