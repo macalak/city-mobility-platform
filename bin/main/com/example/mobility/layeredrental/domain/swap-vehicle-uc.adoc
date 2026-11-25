@@ -1,7 +1,0 @@
-# Swap Vehicle Use Case
-
-1. Add a swap operation to the controller and LayeredRentalService.
-2. Add service logic to load the rental, check that it is active and the replacement is valid, and enforce swap timing rules.
-3. Extend the provider clients and the service’s provider-selection logic to perform the swap.
-4. Update the rental record and repository to save the replacement vehicle and swap time.
-5. Test the rules, provider failures, and API.

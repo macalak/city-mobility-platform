@@ -1,9 +1,0 @@
-# Swap Vehicle Use Case
-
-1. Define SwapVehicleCommand and SwapVehicleUseCase as the inbound contract.
-2. Put rental lifecycle and swap invariants in the domain model.
-3. Implement use-case orchestration: load the rental through a repository port, validate it, request provider confirmation, and save the result.
-4. Extend the provider port and its adapters to support swapping; update persistence mapping for the changed state.
-5. Add an HTTP adapter and test the domain, use case, and adapters separately.  
-
-The swap vehicle business capability changes the core in both designs. Hexagonal architecture makes it explicit which changes express business rules and which translate to external systems.

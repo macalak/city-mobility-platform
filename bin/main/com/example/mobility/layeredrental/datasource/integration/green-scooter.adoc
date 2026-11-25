@@ -1,6 +1,0 @@
-# Support for Green Scooter Integration
-
-1. Add a Green Scooter client (LayeredGreenScooterClient) and its request/response types.
-2. Inject the client into LayeredRentalService.
-3. Add a green-scooter branch to select the client and translate its response.
-4. Test the new branch and provider failures.
