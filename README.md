@@ -9,7 +9,6 @@ The code is organized around the `rental` bounded context:
 - `domain` contains pure business rules and value objects.
 - `application` contains use cases, ports, and orchestration logic.
 - `adapter` contains inbound and outbound integrations.
-- `bootstrap` wires the application together with Spring.
 
 The solution intentionally keeps provider logic behind the `RentalProviderPort` abstraction so that new mobility providers can be added without changing the domain or application service.
 

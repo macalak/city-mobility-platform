@@ -1,5 +1,6 @@
 .gradle/
 build/
+bin/
 docs/ports-and-adapters-conference.html
 .idea/
 *.iml
